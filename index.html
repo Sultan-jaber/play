@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>خمن الرقم الي موجود  </title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      direction: rtl;
+      background-color: #000; /* تغيير الخلفية إلى اللون الأسود */
+      color: #fff; /* تغيير لون النص إلى الأبيض ليظهر بوضوح على الخلفية السوداء */
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .row {
+      margin-bottom: 10px;
+    }
+
+    .box {
+      width: 50px;
+      height: 50px;
+      font-size: 2rem;
+      text-align: center;
+      margin: 0 5px;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      background-color: #fff;
+      color: #000; /* تغيير النص داخل المدخلات إلى الأسود */
+    }
+
+    .correct {
+      background-color: #4caf50;
+      color: #fff;
+    }
+
+    .exists {
+      background-color: #ffeb3b;
+      color: #000;
+    }
+
+    .wrong {
+      background-color: #f44336;
+      color: #fff;
+    }
+
+    #message-box {
+      margin-top: 20px;
+      background-color: #ffeb3b;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    #message-box.hidden {
+      display: none;
+    }
+
+    #win-screen {
+      display: none;
+      background-color: #4caf50;
+      color: #fff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #333;
+      color: #fff;
+      border: none;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
+
+    #mode-label {
+      font-size: 1.2rem;
+      color: #fff; /* تغيير النص إلى الأبيض */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>لعبة الكود السري</h1>
+  <div id="game-container"></div>
+
+  <div id="message-box" class="hidden">
+    <p id="message-text"></p>
+    <button onclick="closeMessage()">إغلاق</button>
+  </div>
+
+  <div id="win-screen" class="hidden">
+    <p>مبروك! لقد فزت!</p>
+    <button onclick="resetGame()">إعادة اللعب</button>
+  </div>
+
+  <div>
+    <button onclick="generateRandomCode()">إنشاء كود عشوائي</button>
+    <button onclick="toggleMode()">تبديل الوضع (عادي/محترف)</button>
+    <br><br>
+    <label for="secret-input">أدخل كود خاص:</label>
+    <input type="text" id="secret-input" maxlength="4" />
+    <button onclick="setSecret()">تعيين الكود الخاص</button>
+  </div>
+
+  <div id="mode-label">عادي</div>
+
+<br><br><br>
+
+<p style="color: #fff; font-size: 1.4rem;">أنا سلطان اللي سويته 💪</p>
+
+
+
+  <script>
+    let secretCode = ['5', '0', '5', '0'];
+    let gameOver = false;
+    let memoryMode = false;
+    const gameContainer = document.getElementById("game-container");
+
+    const correctSound = new Audio('sounds/correct.wav');
+    const existsSound = new Audio('sounds/exists.wav');
+    const wrongSound = new Audio('sounds/wrong.wav');
+    const winSound = new Audio('sounds/win.wav');
+    const clickSound = new Audio('sounds/click.wav');
+    const inputSound = new Audio('sounds/input.wav');
+
+    function playSound(type) {
+      if (type === "correct") correctSound.play();
+      else if (type === "exists") existsSound.play();
+      else if (type === "win") winSound.play();
+      else if (type === "click") clickSound.play();
+      else if (type === "input") inputSound.play();
+      else wrongSound.play();
+    }
+
+    function showMessage(text) {
+      const box = document.getElementById("message-box");
+      const msg = document.getElementById("message-text");
+      msg.textContent = text;
+      box.classList.remove("hidden");
+    }
+
+    function closeMessage() {
+      document.getElementById("message-box").classList.add("hidden");
+    }
+
+    function generateRandomCode() {
+      secretCode = Array.from({ length: 4 }, () => Math.floor(Math.random() * 10).toString());
+      showMessage("تم إنشاء كود عشوائي بنجاح!");
+      resetGame();
+    }
+
+    function setSecret() {
+      const input = document.getElementById("secret-input");
+      const value = input.value;
+      if (value.length === 4 && /^[0-9]{4}$/.test(value)) {
+        secretCode = value.split("");
+        input.value = "";
+        showMessage("تم تعيين الكود الخاص!");
+        resetGame();
+      } else {
+        showMessage("الرجاء إدخال كود مكون من 4 أرقام.");
+      }
+    }
+
+    function toggleMode() {
+      memoryMode = !memoryMode;
+      document.getElementById("mode-label").textContent = memoryMode ? "محترف" : "عادي";
+    }
+
+    function createRow() {
+      if (gameOver) return;
+
+      const row = document.createElement("div");
+      row.className = "row";
+
+      for (let i = 0; i < 4; i++) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 1;
+        input.className = "box";
+        input.inputMode = "numeric";
+
+        input.addEventListener("input", () => {
+          playSound("input");
+          if (input.value.length === 1) {
+            const inputs = row.querySelectorAll("input");
+            const index = Array.from(inputs).indexOf(input);
+            if (index < 3) inputs[index + 1].focus();
+            else setTimeout(() => checkRow(row), 200);
+          }
+        });
+        input.addEventListener("keydown", (e) => {
+  if (e.key === "Backspace" && input.value === "") {
+    const inputs = row.querySelectorAll("input");
+    const index = Array.from(inputs).indexOf(input);
+    if (index > 0) {
+      inputs[index - 1].value = "";
+      inputs[index - 1].focus();
+    }
+    e.preventDefault();
+  }
+});
+
+        row.appendChild(input);
+      }
+
+      gameContainer.appendChild(row);
+      row.querySelector("input").focus();
+    }
+
+    function checkRow(row) {
+      const inputs = row.querySelectorAll("input");
+      const guess = Array.from(inputs).map(i => i.value);
+      let tempSecret = [...secretCode];
+      const state = Array(4).fill("wrong");
+
+      guess.forEach((val, i) => {
+        if (val === secretCode[i]) {
+          state[i] = "correct";
+          tempSecret[i] = null;
+          guess[i] = null;
+        }
+      });
+
+      guess.forEach((val, i) => {
+        if (val && tempSecret.includes(val)) {
+          state[i] = "exists";
+          tempSecret[tempSecret.indexOf(val)] = null;
+        }
+      });
+
+      let allCorrect = true;
+      inputs.forEach((input, i) => {
+        input.classList.add(state[i]);
+        input.disabled = true;
+        playSound(state[i]);
+        if (state[i] !== "correct") allCorrect = false;
+      });
+
+      if (memoryMode) {
+        setTimeout(() => {
+          inputs.forEach(input => {
+            input.classList.remove("correct", "exists", "wrong");
+            input.value = "";
+            input.disabled = false;
+          });
+          inputs[0].focus();
+        }, 1500);
+        return;
+      }
+
+      if (allCorrect) {
+        gameOver = true;
+        setTimeout(() => {
+          playSound("win");
+          document.getElementById("message-box").classList.add("hidden");
+          document.getElementById("win-screen").classList.remove("hidden");
+        }, 400);
+      } else {
+        setTimeout(createRow, 500);
+      }
+    }
+
+    function resetGame() {
+      gameOver = false;
+      gameContainer.innerHTML = "";
+      document.getElementById("win-screen")?.classList.add("hidden");
+      createRow();
+    }
+
+    window.onload = () => {
+      createRow();
+      document.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => playSound("click"));
+      });
+    };
+  </script>
+</body>
+</html>
